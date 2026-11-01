@@ -25,11 +25,13 @@ python -m resq.cli
 python -m resq.cli --closure
 ```
 
-![Road-closure scenario](docs/images/closure.png)
+![Venduruthy Bridge closed: exact optimum (dashed) and QAOA candidate (purple) both reroute amb-3 via Thevara](docs/images/closure.png)
+
+With Venduruthy Bridge closed, the exact optimum (dashed blue) and the best valid QAOA sample (purple) agree: `amb-3` reaches Aluva through Thevara and Willingdon Island.
 
 ## Results
 
-The table reports the measured seed-7 QAOA sweep for the 3-ambulance × 2-incident instance (6 qubits), using 4,096 shots and COBYLA `maxiter=40`. `P(exact optimum)` is the measured probability of sampling the exact optimum. Values are from `artifacts/m2_sweep.txt`; runtime is omitted because it is simulator wall-clock time.
+The table reports the measured seed-7 QAOA sweep for the 3-ambulance × 2-incident instance (6 qubits), using 4,096 shots and COBYLA `maxiter=40`. `P(exact optimum)` is the measured probability of sampling the exact optimum. Each row is a single seeded run of `resq.qaoa.run_qaoa(problem, reps=p, shots=4096, seed=7, maxiter=40)`, so it reproduces exactly.
 
 | Roads | Depth `p` | Valid samples | `P(exact optimum)` | Best valid sample is exact |
 |---|---:|---:|---:|:---:|
@@ -44,11 +46,11 @@ The table reports the measured seed-7 QAOA sweep for the 3-ambulance × 2-incide
 
 ![QAOA run in dark mode](docs/images/qaoa-dark.png)
 
-The dashboard shows a QAOA run and its sampled results in dark mode.
+QAOA run tab in dark mode: the best valid candidate matches the 68-minute exact optimum, every assignment constraint is checked, and the measurement distribution highlights valid bitstrings.
 
 ![Classical validation results](docs/images/validation.png)
 
-The dashboard compares QAOA candidates with exact and Hungarian validation.
+Validation tab: the QAOA candidate, the brute-force exact optimum and the Hungarian baseline agree on the same assignment, with Dijkstra routes for each ambulance.
 
 ## Run it
 

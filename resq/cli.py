@@ -34,7 +34,7 @@ def main() -> None:
 
 
 def _print_report(report) -> None:
-    print("ResQ")
+    print("ResQ — HYBRID QUANTUM-CLASSICAL DISPATCH REPORT")
     print(
         f"Scenario: {len(report.scenario.ambulances)} ambulances, "
         f"{len(report.scenario.incidents)} incidents"
