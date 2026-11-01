@@ -3,8 +3,8 @@ from __future__ import annotations
 import ctypes
 import resource
 
-from qrescue.qaoa import QAOAResult
-from qrescue.qubo import DispatchProblem
+from resq.qaoa import QAOAResult
+from resq.qubo import DispatchProblem
 
 
 def crash_worker(problem: DispatchProblem, **kwargs) -> QAOAResult:

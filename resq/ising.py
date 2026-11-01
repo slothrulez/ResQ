@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from qiskit.quantum_info import SparsePauliOp
 
-from qrescue.qubo import QUBO
+from resq.qubo import QUBO
 
 
 def qubo_to_ising(qubo: QUBO, n: int) -> tuple[SparsePauliOp, float]:

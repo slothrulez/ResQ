@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from qrescue.classical import brute_force
-from qrescue.isolation import run_qaoa_isolated
-from qrescue.qaoa import run_qaoa
-from qrescue.qubo import DispatchProblem
-from qrescue.scenario import demo_scenario
+from resq.classical import brute_force
+from resq.isolation import run_qaoa_isolated
+from resq.qaoa import run_qaoa
+from resq.qubo import DispatchProblem
+from resq.scenario import demo_scenario
 from tests._crash_target import crash_worker
 
 

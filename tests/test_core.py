@@ -6,16 +6,16 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from qrescue.classical import brute_force, hungarian
-from qrescue.ising import qubo_to_ising
-from qrescue.network import RoadNetwork
-from qrescue.pipeline import prepare, routes_for, run_classical
-from qrescue.qaoa import (
+from resq.classical import brute_force, hungarian
+from resq.ising import qubo_to_ising
+from resq.network import RoadNetwork
+from resq.pipeline import prepare, routes_for, run_classical
+from resq.qaoa import (
     aggregate_samples,
     build_qaoa_circuit,
     run_qaoa,
 )
-from qrescue.qubo import (
+from resq.qubo import (
     DispatchProblem,
     InfeasibleInstance,
     assignment,
@@ -25,7 +25,7 @@ from qrescue.qubo import (
     objective_minutes,
     qubo_energy,
 )
-from qrescue.scenario import (
+from resq.scenario import (
     DEMO_CLOSURE,
     Ambulance,
     EAST_BANK,
@@ -372,7 +372,7 @@ def test_infeasible_problem_is_rejected_before_quantum_execution():
 
 
 def test_quantum_backend_exception_returns_error_without_substitute(monkeypatch):
-    import qrescue.qaoa as qaoa_module
+    import resq.qaoa as qaoa_module
 
     def fail_backend(*args, **kwargs):
         raise RuntimeError("injected Aer failure")

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import networkx as nx
 
-from qrescue.network import RoadNetwork
+from resq.network import RoadNetwork
 
 
 @dataclass(frozen=True)

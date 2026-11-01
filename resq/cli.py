@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 
-from qrescue.pipeline import report_to_dict, solve
-from qrescue.scenario import DEMO_CLOSURE, demo_scenario
+from resq.pipeline import report_to_dict, solve
+from resq.scenario import DEMO_CLOSURE, demo_scenario
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
 
 
 def _print_report(report) -> None:
-    print("Q-RESCUE MILESTONE 2 — HYBRID DISPATCH")
+    print("ResQ")
     print(
         f"Scenario: {len(report.scenario.ambulances)} ambulances, "
         f"{len(report.scenario.incidents)} incidents"

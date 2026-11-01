@@ -11,8 +11,8 @@ from qiskit_aer import AerSimulator
 from qiskit_aer.primitives import EstimatorV2, SamplerV2
 from scipy.optimize import minimize
 
-from qrescue.ising import qubo_to_ising
-from qrescue.qubo import (
+from resq.ising import qubo_to_ising
+from resq.qubo import (
     DispatchProblem,
     assignment,
     build_qubo,
@@ -352,7 +352,7 @@ def _decode_bitstring_with_spacing(
 
 
 def _qubo_energy_for_problem(problem: DispatchProblem, x: list[int]) -> float:
-    from qrescue.qubo import qubo_energy
+    from resq.qubo import qubo_energy
 
     return qubo_energy(build_qubo(problem), x)
 

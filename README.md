@@ -1,99 +1,95 @@
-# Q-Rescue
+# ResQ
 
-Q-Rescue is a small hybrid quantum-classical ambulance-dispatch prototype.
-It models a synthetic road network, routes ambulances to incident locations,
-and formulates the assignment as a QUBO. A Streamlit dashboard and command-line
-report expose the same backend, including user-selectable road closures,
-assignment routes, sampled QAOA candidates, and independent classical checks.
-The demonstration uses schematic Kochi-flavoured names and is not a real
-geographic or emergency-response system.
+Hybrid quantum-classical ambulance dispatch on a synthetic Kochi road network, with QAOA (Qiskit Aer) choosing the ambulance-to-incident assignment and exact and classical solvers checking it.
 
-## What the quantum part actually does
+[![Tests](https://github.com/slothrulez/q-rescue/actions/workflows/tests.yml/badge.svg)](https://github.com/slothrulez/q-rescue/actions/workflows/tests.yml)
 
-The assignment QUBO is converted to an Ising cost operator and passed to
-QAOA implemented with Qiskit Aer. Aer evaluates the variational circuit's
-statevector expectation, a classical COBYLA optimizer selects its parameters,
-and an Aer sampler produces candidate bitstrings. The application decodes each
-sample and checks its assignment constraints before presenting it. This is a
-quantum-algorithm simulation on a classical computer, not execution on quantum
-hardware. Exact enumeration and a Hungarian assignment run independently as
-classical validation and baseline; they are not fallbacks for QAOA failure.
-The project makes no quantum-advantage claim.
+![ResQ dashboard](docs/images/overview.png)
 
-## Setup
+## How it works
 
-Python 3.10 is supported. With the standard library's `venv` and pip:
+1. **Build the travel-cost matrix.** Dijkstra computes shortest travel times on the synthetic road graph. Each ambulance–incident cost is severity multiplied by travel time, in weighted minutes.
+2. **Encode the assignment as a QUBO.** Binary variables represent reachable ambulance–incident pairs; penalty terms enforce one ambulance per incident and at most one incident per ambulance:
+   `E(x) = Σ ĉ[a,i]x[a,i] + PΣ_i(1−Σ_a x[a,i])² + PΣ_aΣ_{i<j}x[a,i]x[a,j], where P = 1 + Σ_i max_a ĉ[a,i]`. See the [full formulation](docs/FORMULATION.md).
+3. **Search with QAOA on Aer.** QAOA uses COBYLA to optimize a seeded circuit with `p` cost-and-mixer layers, then samples candidate assignments on the Qiskit Aer simulator.
+4. **Check the candidates classically.** The program checks assignment constraints and compares against exact brute-force enumeration of all `2^n` QUBO states and the Hungarian algorithm.
+
+QAOA performs the assignment only; shortest-path routing and route construction remain classical.
+
+## Demo scenario
+
+With all roads open, the exact optimum is **34 severity-weighted minutes**. Closing Venduruthy Bridge (Vyttila Jn–Maradu) raises it to **68 weighted minutes**; `amb-3` takes over the Aluva incident via Thevara. Run the CLI to see the assignments, routes, and independent validation:
+
+```bash
+python -m resq.cli
+python -m resq.cli --closure
+```
+
+![Road-closure scenario](docs/images/closure.png)
+
+## Results
+
+The table reports the measured seed-7 QAOA sweep for the 3-ambulance × 2-incident instance (6 qubits), using 4,096 shots and COBYLA `maxiter=40`. `P(exact optimum)` is the measured probability of sampling the exact optimum. Values are from `artifacts/m2_sweep.txt`; runtime is omitted because it is simulator wall-clock time.
+
+| Roads | Depth `p` | Valid samples | `P(exact optimum)` | Best valid sample is exact |
+|---|---:|---:|---:|:---:|
+| Open | 1 | 34.1% | 16.7% | Yes |
+| Open | 2 | 31.2% | 4.6% | Yes |
+| Open | 3 | 31.5% | 16.1% | Yes |
+| Venduruthy Bridge closed | 1 | 18.3% | 1.3% | Yes |
+| Venduruthy Bridge closed | 2 | 30.6% | 2.9% | Yes |
+| Venduruthy Bridge closed | 3 | 36.7% | 1.4% | Yes |
+
+## Screenshots
+
+![QAOA run in dark mode](docs/images/qaoa-dark.png)
+
+The dashboard shows a QAOA run and its sampled results in dark mode.
+
+![Classical validation results](docs/images/validation.png)
+
+The dashboard compares QAOA candidates with exact and Hungarian validation.
+
+## Run it
+
+Python 3.10–3.13 has been verified.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-.venv/bin/python -m pip install --upgrade pip
 pip install -r requirements.txt
-```
-
-Or create and install with uv:
-
-```bash
-uv venv --python 3.10 .venv
-uv pip install --python .venv/bin/python -r requirements.txt
-```
-
-## Run
-
-Run the tests:
-
-```bash
-.venv/bin/python -m pytest -q
-```
-
-Run the CLI demo, apply the named bridge closure, or use the 3-by-3 variant:
-
-```bash
-.venv/bin/python -m qrescue.cli
-.venv/bin/python -m qrescue.cli --closure
-.venv/bin/python -m qrescue.cli --three-incidents
-.venv/bin/python -m qrescue.cli --reps 3 --shots 4096 --seed 7 --json
-```
-
-Start the dashboard:
-
-```bash
 streamlit run app.py
+python -m resq.cli --closure
+pytest -q
 ```
 
-The dashboard runs QAOA in a separate worker process so a simulator crash is
-reported as a QAOA error instead of taking the server down.
+The dashboard includes a dark-mode toggle. Dashboard QAOA runs in a separate worker process so a simulator crash is reported as a QAOA error instead of taking down the server.
 
-The sidebar's **Dark mode** switch changes the theme for the whole dashboard,
-including tables and charts. Switching reloads the page; the current scenario
-and QAOA settings are kept in the URL, but a previous QAOA run has to be run
-again.
-
-## Reproducibility
-
-The CLI defaults to seed `7`; the Aer estimator, sampler, and optimizer use
-explicit seeded settings. The demo graph and edge weights are fixed. Package
-versions are pinned in `requirements.txt`, including Python-facing core
-dependencies Qiskit 2.6.1, Qiskit Aer 0.17.2, NumPy 2.2.6, SciPy 1.15.3,
-NetworkX 3.4.2, Streamlit 1.65.0, and Plotly 7.1.0. Different CPU/library
-environments may still affect runtime.
-
-## Repository layout
+## Project layout
 
 ```text
-app.py                    Streamlit dashboard entry point
-qrescue/network.py        Road graph, closures, Dijkstra routes
-qrescue/scenario.py       Deterministic synthetic scenarios
-qrescue/qubo.py           Dispatch problem, QUBO, constraints, decoding
-qrescue/ising.py          QUBO-to-Ising conversion
-qrescue/qaoa.py           QAOA circuit, Aer execution, sample validation
-qrescue/classical.py      Exact enumeration and Hungarian baseline
-qrescue/pipeline.py       Prepared backend stages and solve report
-qrescue/cli.py            Command-line report
-tests/                    Unit and Aer integration tests
-docs/                     Formulation, scenario, architecture, limitations
-artifacts/                Recorded milestone experiments
+resq/
+  __init__.py   Public package exports
+  classical.py  Exact enumeration and Hungarian baseline
+  cli.py        Human-readable command-line report
+  ising.py      QUBO-to-Ising operator conversion
+  isolation.py  Isolated QAOA worker process
+  network.py    Road graph, closures, and Dijkstra routes
+  pipeline.py   Preparation, solving, and report assembly
+  qaoa.py       QAOA circuit, Aer execution, and sample checks
+  qubo.py       Dispatch variables, QUBO, constraints, and decoding
+  scenario.py   Deterministic synthetic Kochi-style scenarios
+app.py           Streamlit dashboard
+tests/           Backend, quantum, and worker-isolation tests
+docs/            Formulation, architecture, scenario, and limitations
 ```
 
-See [the architecture](docs/ARCHITECTURE.md), [the scenario details](docs/DEMO_SCENARIO.md),
-and [limitations](docs/LIMITATIONS.md) for more.
+## Scope and limitations
+
+ResQ runs only on the Aer simulator and demonstrates small instances with 6–9 qubits. Exact brute-force validation scales exponentially as `2^n`. The standard unconstrained X mixer can produce invalid assignments; measured valid-sample fractions in this sweep range from 18.3% to 36.7%. The road network is synthetic and static, not a live traffic or emergency-response system. The objective is total severity-weighted travel time, not a vehicle-routing plan. **No quantum-advantage claim is made**; these results do not show QAOA outperforming classical methods.
+
+See [limitations](docs/LIMITATIONS.md), [architecture](docs/ARCHITECTURE.md), and the [demo scenario](docs/DEMO_SCENARIO.md).
+
+## Tech stack
+
+Pinned in `requirements.txt`: NumPy 2.2.6, SciPy 1.15.3, NetworkX 3.4.2, Qiskit 2.6.1, Qiskit Aer 0.17.2, pytest 9.2.0, Streamlit 1.65.0, and Plotly 7.1.0.

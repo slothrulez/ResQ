@@ -5,11 +5,11 @@ from time import perf_counter
 from collections.abc import Iterable
 from typing import Any
 
-from qrescue.classical import BaselineResult, ExactResult, brute_force, hungarian
-from qrescue.network import RoadNetwork
-from qrescue.qaoa import QAOAResult, run_qaoa
-from qrescue.qubo import DispatchProblem, QUBO, build_qubo
-from qrescue.scenario import DEMO_CLOSURE, Scenario, demo_scenario
+from resq.classical import BaselineResult, ExactResult, brute_force, hungarian
+from resq.network import RoadNetwork
+from resq.qaoa import QAOAResult, run_qaoa
+from resq.qubo import DispatchProblem, QUBO, build_qubo
+from resq.scenario import DEMO_CLOSURE, Scenario, demo_scenario
 
 
 @dataclass
