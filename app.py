@@ -12,14 +12,14 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from qrescue.classical import BaselineResult, ExactResult
-from qrescue.ising import qubo_to_ising
-from qrescue.isolation import run_qaoa_isolated
-from qrescue.qaoa import QAOAResult
-from qrescue import pipeline
-from qrescue.qubo import InfeasibleInstance, check_constraints
-from qrescue.pipeline import Prepared
-from qrescue.scenario import DEMO_CLOSURE, Scenario, demo_scenario
+from resq.classical import BaselineResult, ExactResult
+from resq.ising import qubo_to_ising
+from resq.isolation import run_qaoa_isolated
+from resq.qaoa import QAOAResult
+from resq import pipeline
+from resq.qubo import InfeasibleInstance, check_constraints
+from resq.pipeline import Prepared
+from resq.scenario import DEMO_CLOSURE, Scenario, demo_scenario
 
 SEVERITY_LABEL = {3: "Critical", 2: "Serious", 1: "Minor"}
 SOURCE_QAOA = "QAOA · quantum circuit on Qiskit Aer simulator"
@@ -46,7 +46,7 @@ PALETTES = {
     },
 }
 
-st.set_page_config(page_title="Q-Rescue", layout="wide")
+st.set_page_config(page_title="ResQ", layout="wide")
 
 THEME = "dark" if st.session_state.get("dark", st.query_params.get("theme") == "dark") else "light"
 PAL = PALETTES[THEME]
@@ -363,7 +363,7 @@ st.query_params.from_dict(url_settings)
 sync_theme(url_settings)
 
 # ---------------------------------------------------------------- header
-st.markdown("## Q-Rescue")
+st.markdown("## ResQ")
 st.markdown(
     '<p class="qr-muted">Hybrid quantum-classical ambulance dispatch. Classical Dijkstra '
     "computes travel times on a synthetic road network; QAOA, simulated with Qiskit Aer, "

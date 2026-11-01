@@ -6,8 +6,8 @@ from typing import Sequence
 
 import numpy as np
 
-from qrescue.network import RoadNetwork
-from qrescue.scenario import Ambulance, Incident
+from resq.network import RoadNetwork
+from resq.scenario import Ambulance, Incident
 
 
 class InfeasibleInstance(ValueError):

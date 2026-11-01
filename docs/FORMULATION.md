@@ -1,6 +1,6 @@
-# Q-Rescue mathematical formulation
+# ResQ mathematical formulation
 
-Q-Rescue solves the **ambulance-to-incident assignment** subproblem with QAOA.
+ResQ solves the **ambulance-to-incident assignment** subproblem with QAOA.
 Road routing (shortest travel times on the road network) is a separate,
 classical step (Dijkstra). QAOA never computes routes.
 
@@ -109,7 +109,7 @@ Angles are optimised classically (COBYLA, fixed multi-start grid, fixed seed)
 to minimise `⟨ψ|H|ψ⟩` evaluated on Qiskit Aer. The optimised circuit is then
 sampled on Aer; each measured bitstring is decoded to `x`, checked against C1
 and C2, and scored with `C(x)`. The reported QAOA candidate is the
-lowest-cost **valid** sampled bitstring. If no sample is valid, Q-Rescue
+lowest-cost **valid** sampled bitstring. If no sample is valid, ResQ
 reports that and does not substitute a classical answer.
 
 ## 8. Decoding

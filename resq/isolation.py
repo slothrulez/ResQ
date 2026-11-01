@@ -8,8 +8,8 @@ from threading import Lock
 from time import perf_counter
 from typing import Callable
 
-from qrescue.qaoa import QAOAResult, qaoa_error_result, run_qaoa
-from qrescue.qubo import DispatchProblem
+from resq.qaoa import QAOAResult, qaoa_error_result, run_qaoa
+from resq.qubo import DispatchProblem
 
 _executor_lock = Lock()
 _executor: ProcessPoolExecutor | None = None

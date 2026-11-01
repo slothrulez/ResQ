@@ -7,7 +7,7 @@ from time import perf_counter
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from qrescue.qubo import (
+from resq.qubo import (
     DispatchProblem,
     QUBO,
     assignment,
