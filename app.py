@@ -281,6 +281,8 @@ def sync_theme(settings: dict) -> None:
 
     Streamlit reads the active theme from browser storage on page load, so a change
     is stored there and the page is reloaded with the current settings in the URL.
+    The rendered background, not storage, decides whether this tab needs the reload,
+    because other tabs share the same storage key.
     """
     target = json.dumps("Dark" if THEME == "dark" else "Light")
     query = json.dumps(urlencode(settings, doseq=True))
@@ -289,10 +291,14 @@ def sync_theme(settings: dict) -> None:
         (() => {{
           const key = `stActiveTheme-${{window.location.pathname}}-v2`;
           const want = {target};
-          let stored = null;
-          try {{ stored = JSON.parse(window.localStorage.getItem(key)); }} catch (e) {{}}
-          const current = stored === "Light" || stored === "Dark" ? stored
-            : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "Dark" : "Light");
+          const surfaces = [document.querySelector('[data-testid="stApp"]'), document.body];
+          let rgba = [255, 255, 255, 1];
+          for (const el of surfaces) {{
+            const c = el && getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+            if (c && (c.length < 4 || Number(c[3]) > 0)) {{ rgba = c.map(Number); break; }}
+          }}
+          const luminance = (0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]) / 255;
+          const current = luminance < 0.5 ? "Dark" : "Light";
           if (current !== want) {{
             window.localStorage.setItem(key, JSON.stringify(want));
             window.location.replace(window.location.pathname + "?" + {query});
