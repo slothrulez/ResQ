@@ -18,7 +18,11 @@ class RoadNetwork:
 
     def closed(self, edges: Iterable[tuple[str, str]]) -> RoadNetwork:
         graph = self.graph.copy()
-        graph.remove_edges_from(edges)
+        closure_edges = tuple(edges)
+        for u, v in closure_edges:
+            if not self.graph.has_edge(u, v):
+                raise ValueError(f"closure edge {(u, v)!r} does not exist")
+        graph.remove_edges_from(closure_edges)
         return RoadNetwork(graph)
 
     def travel_time(self, u: str, v: str) -> float:

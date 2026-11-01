@@ -103,6 +103,7 @@ def aggregate_samples(
                 "probability": count / total_shots,
                 "valid": is_valid,
                 "objective_minutes": objective if is_valid else None,
+                "assignment": assignment(problem, x) if is_valid else None,
             }
         )
         if is_valid:
