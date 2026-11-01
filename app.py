@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import platform
+import threading
 from datetime import datetime
 from importlib.metadata import version
+from urllib.parse import urlencode
 
 import numpy as np
 import pandas as pd
@@ -23,27 +26,48 @@ SOURCE_EXACT = "Exact · classical brute-force validation"
 SOURCE_BASELINE = "Baseline · classical Hungarian algorithm"
 SOURCE_ROUTING = "Routing · classical Dijkstra"
 
-COLOR_QAOA = "#6A3FB5"
-COLOR_EXACT = "#1F4E79"
-COLOR_EDGE = "#B8C2CC"
-COLOR_CLOSED = "#C0392B"
-COLOR_AMBULANCE = "#1F7A4D"
-COLOR_INCIDENT = {3: "#C0392B", 2: "#D9822B", 1: "#C9A227"}
+PALETTES = {
+    "light": {
+        "qaoa": "#6A3FB5", "exact": "#1F4E79", "edge": "#B8C2CC", "closed": "#C0392B",
+        "ambulance": "#1F7A4D", "incident": {3: "#C0392B", 2: "#D9822B", 1: "#C9A227"},
+        "text": "#1B2430", "muted": "#5B6573", "node": "#FFFFFF", "paper": "#FFFFFF",
+        "plot": "#FAFBFC", "label_bg": "rgba(255,255,255,0.85)", "invalid_bar": "#C7CDD4",
+        "tag_quantum": ("#EEE7FA", "#4B2A8A"), "tag_classical": ("#E3ECF5", "#1F4E79"),
+        "tag_validation": ("#E6F2EC", "#1F6B45"),
+    },
+    "dark": {
+        "qaoa": "#A98BEA", "exact": "#6FA8DC", "edge": "#4A5563", "closed": "#E5534B",
+        "ambulance": "#3FB27F", "incident": {3: "#E5534B", 2: "#F0A04B", 1: "#E3C04F"},
+        "text": "#E6E9EF", "muted": "#9AA5B1", "node": "#0E1117", "paper": "#0E1117",
+        "plot": "#141A23", "label_bg": "rgba(14,17,23,0.85)", "invalid_bar": "#4A5563",
+        "tag_quantum": ("#2D2346", "#C9B6F2"), "tag_classical": ("#1C2B3D", "#9EC5EA"),
+        "tag_validation": ("#1B3328", "#8FD6AE"),
+    },
+}
 
 st.set_page_config(page_title="Q-Rescue", layout="wide")
 
+THEME = "dark" if st.session_state.get("dark", st.query_params.get("theme") == "dark") else "light"
+PAL = PALETTES[THEME]
+COLOR_QAOA = PAL["qaoa"]
+COLOR_EXACT = PAL["exact"]
+COLOR_EDGE = PAL["edge"]
+COLOR_CLOSED = PAL["closed"]
+COLOR_AMBULANCE = PAL["ambulance"]
+COLOR_INCIDENT = PAL["incident"]
+
 st.markdown(
-    """
+    f"""
     <style>
-    .block-container {padding-top: 2rem; max-width: 1400px;}
-    .qr-tag {display:inline-block; padding:2px 10px; border-radius:999px;
+    .block-container {{padding-top: 2rem; max-width: 1400px;}}
+    .qr-tag {{display:inline-block; padding:2px 10px; border-radius:999px;
              font-size:0.75rem; font-weight:600; letter-spacing:0.02em;
-             margin-bottom:0.4rem;}
-    .qr-quantum {background:#EEE7FA; color:#4B2A8A;}
-    .qr-classical {background:#E3ECF5; color:#1F4E79;}
-    .qr-validation {background:#E6F2EC; color:#1F6B45;}
-    .qr-muted {color:#5B6573; font-size:0.9rem;}
-    div[data-testid="stMetricValue"] {font-size:1.6rem;}
+             margin-bottom:0.4rem;}}
+    .qr-quantum {{background:{PAL["tag_quantum"][0]}; color:{PAL["tag_quantum"][1]};}}
+    .qr-classical {{background:{PAL["tag_classical"][0]}; color:{PAL["tag_classical"][1]};}}
+    .qr-validation {{background:{PAL["tag_validation"][0]}; color:{PAL["tag_validation"][1]};}}
+    .qr-muted {{color:{PAL["muted"]}; font-size:0.9rem;}}
+    div[data-testid="stMetricValue"] {{font-size:1.6rem;}}
     </style>
     """,
     unsafe_allow_html=True,
@@ -73,6 +97,19 @@ def load_scenario(three_incidents: bool) -> Scenario:
 @st.cache_resource(show_spinner=False)
 def prepare(three_incidents: bool, closure: tuple[tuple[str, str], ...]) -> Prepared:
     return pipeline.prepare(load_scenario(three_incidents), closure)
+
+
+@st.cache_resource(show_spinner=False)
+def qiskit_lock() -> threading.Lock:
+    """Serialise Qiskit native calls; overlapping reruns from different sessions crashed the server."""
+    return threading.Lock()
+
+
+@st.cache_resource(show_spinner=False)
+def ising(three_incidents: bool, closure: tuple[tuple[str, str], ...]):
+    prepared = prepare(three_incidents, closure)
+    with qiskit_lock():
+        return qubo_to_ising(prepared.qubo, prepared.problem.n_qubits)
 
 
 @st.cache_resource(show_spinner=False)
@@ -129,8 +166,8 @@ def network_figure(
             y=(y0 + y1) / 2,
             text=label,
             showarrow=False,
-            font=dict(size=10, color=COLOR_CLOSED if is_closed else "#5B6573"),
-            bgcolor="rgba(255,255,255,0.85)",
+            font=dict(size=10, color=COLOR_CLOSED if is_closed else PAL["muted"]),
+            bgcolor=PAL["label_bg"],
         )
 
     def add_routes(routes: list[dict], color: str, name: str, dash: str, width: int, offset: float):
@@ -164,7 +201,7 @@ def network_figure(
             x=[coords[n][0] for n in plain],
             y=[coords[n][1] for n in plain],
             mode="markers",
-            marker=dict(size=9, color="#FFFFFF", line=dict(color="#5B6573", width=1.5)),
+            marker=dict(size=9, color=PAL["node"], line=dict(color=PAL["muted"], width=1.5)),
             text=plain,
             hovertemplate="%{text}<extra></extra>",
             showlegend=False,
@@ -173,14 +210,14 @@ def network_figure(
     for n in plain:
         fig.add_annotation(
             x=coords[n][0], y=coords[n][1], text=n, showarrow=False, yshift=22,
-            font=dict(size=11, color="#1B2430"), bgcolor="rgba(255,255,255,0.8)",
+            font=dict(size=11, color=PAL["text"]), bgcolor=PAL["label_bg"],
         )
     fig.add_trace(
         go.Scatter(
             x=[coords[a.base_node][0] for a in scenario.ambulances],
             y=[coords[a.base_node][1] for a in scenario.ambulances],
             mode="markers",
-            marker=dict(size=18, color=COLOR_AMBULANCE, symbol="square", line=dict(color="white", width=2)),
+            marker=dict(size=18, color=COLOR_AMBULANCE, symbol="square", line=dict(color=PAL["paper"], width=2)),
             name="Ambulance base",
             text=[f"{a.id} · {a.name}" for a in scenario.ambulances],
             hovertemplate="%{text}<extra></extra>",
@@ -193,7 +230,7 @@ def network_figure(
                 x=[coords[i.node][0] for i in group],
                 y=[coords[i.node][1] for i in group],
                 mode="markers",
-                marker=dict(size=20, color=COLOR_INCIDENT[severity], symbol="diamond", line=dict(color="white", width=2)),
+                marker=dict(size=20, color=COLOR_INCIDENT[severity], symbol="diamond", line=dict(color=PAL["paper"], width=2)),
                 name=f"Incident · {SEVERITY_LABEL[severity]}",
                 text=[f"{i.id} · {i.description}" for i in group],
                 hovertemplate="%{text}<extra></extra>",
@@ -202,8 +239,9 @@ def network_figure(
     fig.update_layout(
         height=520,
         margin=dict(l=10, r=10, t=10, b=10),
-        plot_bgcolor="#FAFBFC",
-        paper_bgcolor="#FFFFFF",
+        plot_bgcolor=PAL["plot"],
+        paper_bgcolor=PAL["paper"],
+        font=dict(color=PAL["text"]),
         legend=dict(orientation="h", yanchor="bottom", y=1.01, x=0),
         xaxis=dict(visible=False),
         yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
@@ -215,14 +253,69 @@ def assignment_text(chosen) -> str:
     return ", ".join(f"{a} → {i}" for a, i in chosen) if chosen else "—"
 
 
-# ---------------------------------------------------------------- sidebar
-with st.sidebar:
-    st.markdown("### Scenario")
-    variant = st.radio(
-        "Instance",
-        ["3 ambulances × 2 incidents (6 qubits)", "3 ambulances × 3 incidents (9 qubits)"],
-        index=0,
+VARIANTS = ["3 ambulances × 2 incidents (6 qubits)", "3 ambulances × 3 incidents (9 qubits)"]
+SETTING_OPTIONS = {"reps": [1, 2, 3], "shots": [1024, 2048, 4096, 8192], "maxiter": [20, 40, 60, 100]}
+SETTING_DEFAULTS = {"reps": 2, "shots": 4096, "seed": 7, "maxiter": 40}
+
+
+def restore_settings() -> None:
+    """Seed widget state from the URL once per session, so a theme switch keeps the settings."""
+    if st.session_state.get("_restored"):
+        return
+    st.session_state._restored = True
+    params = st.query_params
+    st.session_state.dark = params.get("theme") == "dark"
+    st.session_state.variant = VARIANTS[1] if params.get("incidents") == "3" else VARIANTS[0]
+    for name, default in SETTING_DEFAULTS.items():
+        try:
+            value = int(params.get(name, default))
+        except ValueError:
+            value = default
+        allowed = value in SETTING_OPTIONS[name] if name in SETTING_OPTIONS else 0 <= value <= 10_000
+        st.session_state[name] = value if allowed else default
+    st.session_state._restored_closure = [tuple(e.split("|", 1)) for e in params.get_all("closed")]
+
+
+def sync_theme(settings: dict) -> None:
+    """Keep Streamlit's own light/dark theme in step with the toggle.
+
+    Streamlit reads the active theme from browser storage on page load, so a change
+    is stored there and the page is reloaded with the current settings in the URL.
+    The rendered background, not storage, decides whether this tab needs the reload,
+    because other tabs share the same storage key.
+    """
+    target = json.dumps("Dark" if THEME == "dark" else "Light")
+    query = json.dumps(urlencode(settings, doseq=True))
+    st.html(
+        f"""<script>
+        (() => {{
+          const key = `stActiveTheme-${{window.location.pathname}}-v2`;
+          const want = {target};
+          const surfaces = [document.querySelector('[data-testid="stApp"]'), document.body];
+          let rgba = [255, 255, 255, 1];
+          for (const el of surfaces) {{
+            const c = el && getComputedStyle(el).backgroundColor.match(/[\\d.]+/g);
+            if (c && (c.length < 4 || Number(c[3]) > 0)) {{ rgba = c.map(Number); break; }}
+          }}
+          const luminance = (0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]) / 255;
+          const current = luminance < 0.5 ? "Dark" : "Light";
+          if (current !== want) {{
+            window.localStorage.setItem(key, JSON.stringify(want));
+            window.location.replace(window.location.pathname + "?" + {query});
+          }}
+        }})();
+        </script>""",
+        unsafe_allow_javascript=True,
     )
+
+
+# ---------------------------------------------------------------- sidebar
+restore_settings()
+with st.sidebar:
+    st.toggle("Dark mode", key="dark")
+
+    st.markdown("### Scenario")
+    variant = st.radio("Instance", VARIANTS, key="variant")
     three_incidents = variant.startswith("3 ambulances × 3")
     scenario = load_scenario(three_incidents)
 
@@ -231,7 +324,7 @@ with st.sidebar:
     labels = {e: edge_label(scenario, *e) for e in edges}
     default_closure = [edge_key(*e) for e in DEMO_CLOSURE]
     if "closure" not in st.session_state:
-        st.session_state.closure = []
+        st.session_state.closure = [e for e in st.session_state.pop("_restored_closure", []) if e in labels]
     c1, c2 = st.columns(2)
     if c1.button("Demo closure", use_container_width=True):
         st.session_state.closure = default_closure
@@ -246,13 +339,27 @@ with st.sidebar:
     closure = tuple(sorted(st.session_state.closure))
 
     st.markdown("### QAOA settings")
-    reps = st.select_slider("Layers p", options=[1, 2, 3], value=2)
-    shots = st.select_slider("Shots", options=[1024, 2048, 4096, 8192], value=4096)
-    seed = int(st.number_input("Seed", min_value=0, max_value=10_000, value=7, step=1))
-    maxiter = st.select_slider("COBYLA max iterations per start", options=[20, 40, 60, 100], value=40)
+    reps = st.select_slider("Layers p", options=SETTING_OPTIONS["reps"], key="reps")
+    shots = st.select_slider("Shots", options=SETTING_OPTIONS["shots"], key="shots")
+    seed = int(st.number_input("Seed", min_value=0, max_value=10_000, step=1, key="seed"))
+    maxiter = st.select_slider(
+        "COBYLA max iterations per start", options=SETTING_OPTIONS["maxiter"], key="maxiter"
+    )
     run_clicked = st.button("Run quantum optimisation", type="primary", use_container_width=True)
 
 config = (three_incidents, closure, reps, shots, seed, maxiter)
+
+url_settings = {
+    "theme": THEME,
+    "incidents": "3" if three_incidents else "2",
+    "reps": reps,
+    "shots": shots,
+    "seed": seed,
+    "maxiter": maxiter,
+    "closed": [f"{u}|{v}" for u, v in closure],
+}
+st.query_params.from_dict(url_settings)
+sync_theme(url_settings)
 
 # ---------------------------------------------------------------- header
 st.markdown("## Q-Rescue")
@@ -277,7 +384,10 @@ exact, baseline = classical(three_incidents, closure)
 
 if run_clicked:
     with st.status("Running QAOA on the Qiskit Aer simulator…", expanded=False) as status:
-        result = run_qaoa(problem, reps=reps, shots=shots, seed=seed, maxiter=maxiter, optimal_bitstring=exact.bitstring)
+        with qiskit_lock():
+            result = run_qaoa(
+                problem, reps=reps, shots=shots, seed=seed, maxiter=maxiter, optimal_bitstring=exact.bitstring
+            )
         status.update(label=f"QAOA finished in {result.runtime_seconds:.2f} s", state="complete")
     runs = st.session_state.get("run_counter", 0) + 1
     st.session_state.run_counter = runs
@@ -390,7 +500,7 @@ with tab_qubo:
         "so the lowest-energy bitstring is the best valid dispatch. Substituting "
         r"$x_k=(1-Z_k)/2$ turns E into a diagonal Ising Hamiltonian, which is the QAOA cost operator."
     )
-    operator, offset = qubo_to_ising(qubo, problem.n_qubits)
+    operator, offset = ising(three_incidents, closure)
     c1, c2, c3 = st.columns(3)
     c1.metric("Linear QUBO terms", len(qubo.linear))
     c2.metric("Quadratic QUBO terms", len(qubo.quadratic))
@@ -459,13 +569,14 @@ with tab_qaoa:
                 go.Bar(
                     x=top["bitstring"],
                     y=top["probability"],
-                    marker_color=[COLOR_QAOA if v else "#C7CDD4" for v in top["valid"]],
+                    marker_color=[COLOR_QAOA if v else PAL["invalid_bar"] for v in top["valid"]],
                     hovertemplate="%{x}<br>p=%{y:.3f}<extra></extra>",
                 )
             )
             fig.update_layout(
                 height=300, margin=dict(l=10, r=10, t=10, b=10), yaxis_title="Probability",
-                xaxis_title="Bitstring (qubit 0 rightmost)", xaxis_type="category", plot_bgcolor="#FAFBFC",
+                xaxis_title="Bitstring (qubit 0 rightmost)", xaxis_type="category", plot_bgcolor=PAL["plot"],
+                paper_bgcolor=PAL["paper"], font=dict(color=PAL["text"]),
             )
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             st.caption("Purple bars satisfy every constraint; grey bars violate at least one.")

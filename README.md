@@ -61,6 +61,11 @@ Start the dashboard:
 streamlit run app.py
 ```
 
+The sidebar's **Dark mode** switch changes the theme for the whole dashboard,
+including tables and charts. Switching reloads the page; the current scenario
+and QAOA settings are kept in the URL, but a previous QAOA run has to be run
+again.
+
 ## Reproducibility
 
 The CLI defaults to seed `7`; the Aer estimator, sampler, and optimizer use
