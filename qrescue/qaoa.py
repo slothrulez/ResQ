@@ -64,6 +64,54 @@ class QAOAResult:
     message: str | None = None
 
 
+def _result_base(
+    problem: DispatchProblem, reps: int, shots: int, seed: int
+) -> dict[str, Any]:
+    return {
+        "n_qubits": problem.n_qubits,
+        "reps": reps,
+        "circuit_depth": None,
+        "two_qubit_gate_count": None,
+        "optimiser_iterations": 0,
+        "optimiser_evals": 0,
+        "shots": shots,
+        "seed": seed,
+        "valid_fraction": 0.0,
+        "prob_of_exact_optimum": None,
+        "top_k": (),
+        "counts": {},
+        "runtime_seconds": 0.0,
+        "backend_name": "aer_simulator",
+        "backend_method": "statevector expectation; Aer sampler",
+    }
+
+
+def qaoa_error_result(
+    problem: DispatchProblem,
+    *,
+    reps: int = 2,
+    shots: int = 4096,
+    seed: int = 7,
+    message: str,
+    runtime_seconds: float = 0.0,
+    result_base: dict[str, Any] | None = None,
+) -> QAOAResult:
+    fields = (
+        _result_base(problem, reps, shots, seed)
+        if result_base is None
+        else dict(result_base)
+    )
+    fields["runtime_seconds"] = runtime_seconds
+    return QAOAResult(
+        status="error",
+        best_valid=None,
+        optimal_params=None,
+        final_expected_energy=None,
+        message=message,
+        **fields,
+    )
+
+
 def build_qaoa_circuit(
     problem: DispatchProblem, reps: int = 2, measure: bool = False
 ) -> QuantumCircuit:
@@ -145,23 +193,7 @@ def run_qaoa(
     optimal_bitstring: str | None = None,
 ) -> QAOAResult:
     started = perf_counter()
-    result_base = {
-        "n_qubits": problem.n_qubits,
-        "reps": reps,
-        "circuit_depth": None,
-        "two_qubit_gate_count": None,
-        "optimiser_iterations": 0,
-        "optimiser_evals": 0,
-        "shots": shots,
-        "seed": seed,
-        "valid_fraction": 0.0,
-        "prob_of_exact_optimum": None,
-        "top_k": (),
-        "counts": {},
-        "runtime_seconds": 0.0,
-        "backend_name": "aer_simulator",
-        "backend_method": "statevector expectation; Aer sampler",
-    }
+    result_base = _result_base(problem, reps, shots, seed)
     try:
         if reps < 1:
             raise ValueError("reps must be at least 1")
@@ -291,13 +323,14 @@ def run_qaoa(
             }},
         )
     except Exception as error:
-        return QAOAResult(
-            status="error",
-            best_valid=None,
-            optimal_params=None,
-            final_expected_energy=None,
+        return qaoa_error_result(
+            problem,
+            reps=reps,
+            shots=shots,
+            seed=seed,
             message=f"{type(error).__name__}: {error}",
-            **{**result_base, "runtime_seconds": perf_counter() - started},
+            runtime_seconds=perf_counter() - started,
+            result_base=result_base,
         )
 
 
