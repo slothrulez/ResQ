@@ -14,7 +14,8 @@ import streamlit as st
 
 from qrescue.classical import BaselineResult, ExactResult
 from qrescue.ising import qubo_to_ising
-from qrescue.qaoa import QAOAResult, run_qaoa
+from qrescue.isolation import run_qaoa_isolated
+from qrescue.qaoa import QAOAResult
 from qrescue import pipeline
 from qrescue.qubo import InfeasibleInstance, check_constraints
 from qrescue.pipeline import Prepared
@@ -384,10 +385,14 @@ exact, baseline = classical(three_incidents, closure)
 
 if run_clicked:
     with st.status("Running QAOA on the Qiskit Aer simulator…", expanded=False) as status:
-        with qiskit_lock():
-            result = run_qaoa(
-                problem, reps=reps, shots=shots, seed=seed, maxiter=maxiter, optimal_bitstring=exact.bitstring
-            )
+        result = run_qaoa_isolated(
+            problem,
+            reps=reps,
+            shots=shots,
+            seed=seed,
+            maxiter=maxiter,
+            optimal_bitstring=exact.bitstring,
+        )
         status.update(label=f"QAOA finished in {result.runtime_seconds:.2f} s", state="complete")
     runs = st.session_state.get("run_counter", 0) + 1
     st.session_state.run_counter = runs

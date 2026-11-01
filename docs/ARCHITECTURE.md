@@ -34,6 +34,9 @@ exact and Hungarian checks independently. `solve(...)` composes those stages
 with QAOA and builds a report. `routes_for(...)` uses the classical road
 network to recover routes for any supplied assignment.
 
+The dashboard runs QAOA in a separate worker process so a simulator crash is
+reported as a QAOA error instead of taking the server down.
+
 ## Responsibility boundaries
 
 | Component | Quantum / simulated quantum role | Classical role |
