@@ -465,7 +465,7 @@ with tab_qaoa:
             )
             fig.update_layout(
                 height=300, margin=dict(l=10, r=10, t=10, b=10), yaxis_title="Probability",
-                xaxis_title="Bitstring (qubit 0 rightmost)", plot_bgcolor="#FAFBFC",
+                xaxis_title="Bitstring (qubit 0 rightmost)", xaxis_type="category", plot_bgcolor="#FAFBFC",
             )
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             st.caption("Purple bars satisfy every constraint; grey bars violate at least one.")
