@@ -33,4 +33,6 @@ def qubo_to_ising(qubo: QUBO, n: int) -> tuple[SparsePauliOp, float]:
 
     if not terms:
         terms.append(("I" * n, 0.0))
-    return SparsePauliOp.from_list(terms).simplify(), float(offset)
+    # Each label occurs once and zero terms are skipped, so simplify() is unnecessary.
+    # Its native unordered_unique call segfaulted inside Streamlit script threads.
+    return SparsePauliOp.from_list(terms), float(offset)
