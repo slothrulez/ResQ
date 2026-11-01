@@ -9,6 +9,7 @@ import pytest
 from qrescue.classical import brute_force, hungarian
 from qrescue.ising import qubo_to_ising
 from qrescue.network import RoadNetwork
+from qrescue.pipeline import prepare, routes_for, run_classical
 from qrescue.qaoa import (
     aggregate_samples,
     build_qaoa_circuit,
@@ -27,7 +28,10 @@ from qrescue.qubo import (
 from qrescue.scenario import (
     DEMO_CLOSURE,
     Ambulance,
+    EAST_BANK,
     Incident,
+    Scenario,
+    WEST_BANK,
     demo_scenario,
 )
 
@@ -203,15 +207,155 @@ def test_invalid_sample_aggregation_never_substitutes_a_classical_answer():
 
 
 def test_closure_changes_unique_optimum_and_recomputes_costs():
-    open_problem = make_problem()
-    closed_problem = make_problem(closure=True)
+    scenario = demo_scenario()
+    closed_network = scenario.network.closed(DEMO_CLOSURE)
+    open_problem = DispatchProblem.build(
+        scenario.network, scenario.ambulances, scenario.incidents
+    )
+    closed_problem = DispatchProblem.build(
+        closed_network, scenario.ambulances, scenario.incidents
+    )
     open_exact = brute_force(open_problem)
     closed_exact = brute_force(closed_problem)
     assert open_exact.assignment != closed_exact.assignment
-    assert open_exact.objective_minutes == 35
-    assert closed_exact.objective_minutes == 42
+    assert open_exact.objective_minutes == 34
+    assert closed_exact.objective_minutes == 68
     assert not np.array_equal(open_problem.c, closed_problem.c)
-    assert all(np.isfinite(closed_problem.c[a, i]) for a, i in closed_problem.K)
+    assert np.isfinite(closed_problem.c).all()
+
+    for three_incidents, expected_open, expected_closed in ((False, 34, 68), (True, 49, 97)):
+        scenario = demo_scenario(three_incidents=three_incidents)
+        open_problem = DispatchProblem.build(
+            scenario.network, scenario.ambulances, scenario.incidents
+        )
+        closed_network = scenario.network.closed(DEMO_CLOSURE)
+        closed_problem = DispatchProblem.build(
+            closed_network, scenario.ambulances, scenario.incidents
+        )
+        for problem, expected in (
+            (open_problem, expected_open),
+            (closed_problem, expected_closed),
+        ):
+            assert np.isfinite(problem.c).all()
+            exact = brute_force(problem)
+            assert exact.objective_minutes == expected
+            feasible_costs = [
+                objective_minutes(problem, state)
+                for state in product((0, 1), repeat=problem.n_qubits)
+                if check_constraints(problem, state).valid
+            ]
+            assert feasible_costs.count(min(feasible_costs)) == 1
+
+    open_by_incident = {incident_id: ambulance_id for ambulance_id, incident_id in open_exact.assignment}
+    closed_by_incident = {
+        incident_id: ambulance_id for ambulance_id, incident_id in closed_exact.assignment
+    }
+    open_ambulance = next(
+        ambulance for ambulance in scenario.ambulances
+        if ambulance.id == open_by_incident["inc-2"]
+    )
+    closed_ambulance = next(
+        ambulance for ambulance in scenario.ambulances
+        if ambulance.id == closed_by_incident["inc-2"]
+    )
+    open_path = scenario.network.route(open_ambulance.base_node, "Aluva")
+    closed_path = closed_network.route(closed_ambulance.base_node, "Aluva")
+    assert open_path is not None and closed_path is not None
+    open_bridge_names = {
+        scenario.network.graph[u][v].get("name")
+        for u, v in zip(open_path, open_path[1:])
+    }
+    closed_bridge_names = {
+        closed_network.graph[u][v].get("name")
+        for u, v in zip(closed_path, closed_path[1:])
+    }
+    assert "Venduruthy Bridge" in open_bridge_names
+    assert "Thevara Bridge" in closed_bridge_names
+
+
+def test_scenario_is_mesh_with_three_named_backwater_bridges():
+    scenario = demo_scenario()
+    graph = scenario.network.graph
+    assert len(graph) == 12
+    assert all(2 <= degree <= 4 for _, degree in graph.degree())
+    crossing_edges = [
+        (u, v, data)
+        for u, v, data in graph.edges(data=True)
+        if (u in WEST_BANK and v in EAST_BANK) or (v in WEST_BANK and u in EAST_BANK)
+    ]
+    assert len(crossing_edges) == 3
+    assert {data["name"] for _, _, data in crossing_edges} == {
+        "Venduruthy Bridge",
+        "Thevara Bridge",
+        "Kaloor-Kakkanad Bridge",
+    }
+
+
+def test_prepare_supports_unreachable_pairs_with_a_smaller_variable_set():
+    graph = nx.Graph()
+    graph.add_weighted_edges_from(
+        (
+            ("a0", "i0", 2),
+            ("a0", "a1", 1),
+            ("a1", "i1", 2),
+            ("a2", "i1", 3),
+        ),
+        weight="minutes",
+    )
+    network = RoadNetwork(graph)
+    scenario = Scenario(
+        network=network,
+        ambulances=(
+            Ambulance("a0", "A0", "a0"),
+            Ambulance("a1", "A1", "a1"),
+            Ambulance("a2", "A2", "a2"),
+        ),
+        incidents=(
+            Incident("i0", "i0", 2, "first"),
+            Incident("i1", "i1", 1, "second"),
+        ),
+        coordinates={node: (float(index), 0.0) for index, node in enumerate(graph)},
+    )
+    open_prepared = prepare(scenario)
+    closed_prepared = prepare(scenario, closure=(("a0", "a1"),))
+    assert open_prepared.problem.n_qubits == 6
+    assert closed_prepared.problem.n_qubits == 3
+    exact, baseline = run_classical(closed_prepared)
+    assert exact.assignment == baseline.assignment
+    assert len(routes_for(closed_prepared.network, scenario, exact.assignment)) == 2
+
+
+def test_prepare_raises_for_infeasible_and_nonexistent_closure_edges():
+    graph = nx.Graph()
+    graph.add_weighted_edges_from(
+        (
+            ("a0", "i0", 2),
+            ("a0", "a1", 1),
+            ("a1", "i1", 2),
+            ("a2", "i1", 3),
+        ),
+        weight="minutes",
+    )
+    scenario = Scenario(
+        network=RoadNetwork(graph),
+        ambulances=(
+            Ambulance("a0", "A0", "a0"),
+            Ambulance("a1", "A1", "a1"),
+            Ambulance("a2", "A2", "a2"),
+        ),
+        incidents=(
+            Incident("i0", "i0", 2, "first"),
+            Incident("i1", "i1", 1, "second"),
+        ),
+        coordinates={node: (float(index), 0.0) for index, node in enumerate(graph)},
+    )
+    with pytest.raises(InfeasibleInstance, match="no reachable ambulance"):
+        prepare(
+            scenario,
+            closure=(("a1", "i1"), ("a2", "i1")),
+        )
+    with pytest.raises(ValueError, match="does not exist"):
+        prepare(scenario, closure=(("unknown", "edge"),))
 
 
 def test_infeasible_problem_is_rejected_before_quantum_execution():

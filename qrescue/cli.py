@@ -34,7 +34,7 @@ def main() -> None:
 
 
 def _print_report(report) -> None:
-    print("Q-RESCUE MILESTONE 1 — HYBRID DISPATCH")
+    print("Q-RESCUE MILESTONE 2 — HYBRID DISPATCH")
     print(
         f"Scenario: {len(report.scenario.ambulances)} ambulances, "
         f"{len(report.scenario.incidents)} incidents"
@@ -72,7 +72,8 @@ def _print_report(report) -> None:
             f"bitstring={qaoa.best_valid.bitstring}"
         )
     print(f"  Runtime: {qaoa.runtime_seconds:.3f}s")
-    print(f"  Top sampled bitstrings: {qaoa.top_k}")
+    print("  Top sampled bitstrings")
+    _print_sample_table(qaoa.top_k)
 
     print("\nEXACT validation (classical)")
     print(
@@ -107,6 +108,41 @@ def _print_report(report) -> None:
 
 def _format_number(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.6f}"
+
+
+def _print_sample_table(samples) -> None:
+    headers = ("bitstring", "count", "probability", "valid", "minutes", "assignment")
+    rows = []
+    for sample in samples:
+        chosen = sample["assignment"]
+        assignment_text = (
+            "—"
+            if chosen is None
+            else ", ".join(f"{ambulance}→{incident}" for ambulance, incident in chosen)
+        )
+        minutes = (
+            "n/a"
+            if sample["objective_minutes"] is None
+            else f"{sample['objective_minutes']:.3f}"
+        )
+        rows.append(
+            (
+                sample["bitstring"],
+                str(sample["count"]),
+                f"{sample['probability']:.6f}",
+                str(sample["valid"]),
+                minutes,
+                assignment_text,
+            )
+        )
+    widths = tuple(
+        max(len(header), *(len(row[index]) for row in rows))
+        for index, header in enumerate(headers)
+    )
+    print("    " + " | ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
+    print("    " + "-+-".join("-" * width for width in widths))
+    for row in rows:
+        print("    " + " | ".join(value.ljust(widths[i]) for i, value in enumerate(row)))
 
 
 if __name__ == "__main__":

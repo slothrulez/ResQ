@@ -35,52 +35,88 @@ NODES = (
     "Palarivattom",
     "Kaloor",
     "MG Road",
+    "Thevara",
     "Edappally",
     "Kakkanad",
     "Thrippunithura",
     "Maradu",
     "Fort Kochi",
-    "Thevara",
+    "Willingdon Island",
+    "Aluva",
 )
 
 COORDINATES = {
-    "Vyttila Jn": (0.0, 0.0),
-    "Palarivattom": (1.0, 1.0),
-    "Kaloor": (2.0, 2.0),
-    "MG Road": (3.0, 1.5),
-    "Edappally": (4.0, 2.5),
-    "Kakkanad": (5.0, 2.0),
-    "Thrippunithura": (6.0, 1.0),
-    "Maradu": (7.0, 0.0),
-    "Fort Kochi": (8.0, 1.0),
-    "Thevara": (9.0, 0.0),
+    "Vyttila Jn": (3.0, 1.0),
+    "Palarivattom": (1.0, 3.0),
+    "Kaloor": (3.0, 4.0),
+    "MG Road": (2.5, 3.0),
+    "Thevara": (3.0, 2.0),
+    "Edappally": (1.0, 2.0),
+    "Kakkanad": (5.0, 4.0),
+    "Thrippunithura": (7.0, 4.0),
+    "Maradu": (5.0, 1.0),
+    "Fort Kochi": (7.0, 2.0),
+    "Willingdon Island": (5.0, 2.0),
+    "Aluva": (6.0, 0.0),
 }
 
-DEMO_CLOSURE = (("Thevara", "Vyttila Jn"),)
+WEST_BANK = frozenset(
+    ("Vyttila Jn", "Palarivattom", "Kaloor", "MG Road", "Thevara", "Edappally")
+)
+EAST_BANK = frozenset(
+    (
+        "Kakkanad",
+        "Thrippunithura",
+        "Maradu",
+        "Fort Kochi",
+        "Willingdon Island",
+        "Aluva",
+    )
+)
+
+DEMO_CLOSURE = (("Vyttila Jn", "Maradu"),)
 
 
 def demo_scenario(three_incidents: bool = False) -> Scenario:
     graph = nx.Graph()
     graph.add_nodes_from(NODES)
-    minutes = (3, 3, 3, 3, 3, 3, 3, 12, 3, 1)
-    for index, edge_minutes in enumerate(minutes):
-        graph.add_edge(
-            NODES[index],
-            NODES[(index + 1) % len(NODES)],
-            minutes=edge_minutes,
-        )
+    roads = (
+        ("Vyttila Jn", "Palarivattom", 4, None),
+        ("Palarivattom", "Kaloor", 14, None),
+        ("Kaloor", "MG Road", 6, None),
+        ("MG Road", "Thevara", 9, None),
+        ("Thevara", "Vyttila Jn", 9, None),
+        ("Palarivattom", "Edappally", 12, None),
+        ("Edappally", "Thevara", 4, None),
+        ("Edappally", "MG Road", 12, None),
+        ("Kakkanad", "Thrippunithura", 4, None),
+        ("Thrippunithura", "Fort Kochi", 11, None),
+        ("Fort Kochi", "Willingdon Island", 6, None),
+        ("Willingdon Island", "Aluva", 12, None),
+        ("Aluva", "Maradu", 6, None),
+        ("Maradu", "Kakkanad", 9, None),
+        ("Maradu", "Fort Kochi", 5, None),
+        ("Vyttila Jn", "Maradu", 2, "Venduruthy Bridge"),
+        ("Thevara", "Willingdon Island", 9, "Thevara Bridge"),
+        ("Kaloor", "Kakkanad", 13, "Kaloor-Kakkanad Bridge"),
+    )
+    for u, v, minutes, name in roads:
+        edge_data = {"minutes": minutes}
+        if name is not None:
+            edge_data["name"] = name
+        graph.add_edge(u, v, **edge_data)
 
     ambulances = (
-        Ambulance("amb-1", "Vyttila Unit", "Vyttila Jn"),
-        Ambulance("amb-2", "Kakkanad Unit", "Kakkanad"),
-        Ambulance("amb-3", "Maradu Unit", "Maradu"),
+        Ambulance("amb-1", "Kaloor Unit", "Kaloor"),
+        Ambulance("amb-2", "Vyttila Unit", "Vyttila Jn"),
+        Ambulance("amb-3", "Edappally Unit", "Edappally"),
     )
     incidents = [
-        Incident("inc-1", "Kaloor", 3, "Critical medical emergency"),
-        Incident("inc-2", "Fort Kochi", 2, "Serious road incident"),
+        Incident("inc-1", "MG Road", 3, "Critical medical emergency"),
+        Incident("inc-2", "Aluva", 2, "Serious road incident"),
     ]
     if three_incidents:
-        incidents.append(Incident("inc-3", "Edappally", 1, "Minor injury"))
+        incidents.append(Incident("inc-3", "Maradu", 1, "Minor injury"))
 
     return Scenario(
         network=RoadNetwork(graph),

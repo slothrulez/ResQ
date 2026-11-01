@@ -4,3 +4,5 @@ networkx==3.4.2
 qiskit==2.6.1
 qiskit-aer==0.17.2
 pytest==9.2.0
+streamlit==1.65.0
+plotly==7.1.0
