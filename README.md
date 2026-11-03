@@ -69,7 +69,7 @@ Python 3.10–3.13 has been verified.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 streamlit run app.py
 python -m resq.cli --closure
