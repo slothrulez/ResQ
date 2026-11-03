@@ -25,6 +25,17 @@ python -m resq.cli
 python -m resq.cli --closure
 ```
 
+CLI options:
+
+| Flag | Default | Description |
+|---|---|---|
+| `--closure` | off | Apply the Venduruthy Bridge closure |
+| `--three-incidents` | off | Run the 3-ambulance × 3-incident variant (9 qubits) |
+| `--reps` | `2` | QAOA depth `p` |
+| `--shots` | `4096` | Aer measurement shots |
+| `--seed` | `7` | Seed for the simulator and optimizer |
+| `--json` | off | Emit the full report as JSON instead of text |
+
 ![Venduruthy Bridge closed: exact optimum (dashed) and QAOA candidate (purple) both reroute amb-3 via Thevara](docs/images/closure.png)
 
 With Venduruthy Bridge closed, the exact optimum (dashed blue) and the best valid QAOA sample (purple) agree: `amb-3` reaches Aluva through Thevara and Willingdon Island.
