@@ -76,6 +76,8 @@ python -m resq.cli --closure
 pytest -q
 ```
 
+For a faster test run that skips the QAOA simulator tests, use `pytest -q -m "not quantum"`.
+
 The dashboard includes a dark-mode toggle. Dashboard QAOA runs in a separate worker process so a simulator crash is reported as a QAOA error instead of taking down the server.
 
 ## Project layout
