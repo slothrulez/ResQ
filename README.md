@@ -35,6 +35,7 @@ CLI options:
 | `--shots` | `4096` | Aer measurement shots |
 | `--seed` | `7` | Seed for the simulator and optimizer |
 | `--sweep` | off | Run QAOA depth sweep across p=1,2,3 and print comparison table |
+| `--compare-closures` | off | Rank dispatch impact of closing each backwater bridge |
 | `--json` | off | Emit the full report as JSON instead of text |
 
 ![Venduruthy Bridge closed: exact optimum (dashed) and QAOA candidate (purple) both reroute amb-3 via Thevara](docs/images/closure.png)

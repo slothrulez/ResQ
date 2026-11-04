@@ -22,9 +22,18 @@ def main() -> None:
         action="store_true",
         help="run a QAOA depth sweep across p=1,2,3 and print a comparison table",
     )
+    parser.add_argument(
+        "--compare-closures",
+        action="store_true",
+        help="evaluate and rank the dispatch impact of closing each backwater bridge",
+    )
     args = parser.parse_args()
 
     scenario = demo_scenario(three_incidents=args.three_incidents)
+
+    if args.compare_closures:
+        _run_closure_analysis(scenario, args)
+        return
 
     if args.sweep:
         _run_sweep(scenario, args)
@@ -41,6 +50,65 @@ def main() -> None:
         print(json.dumps(report_to_dict(report), indent=2))
     else:
         _print_report(report)
+
+
+def _run_closure_analysis(scenario, args) -> None:
+    from resq.analysis import analyze_closures, closure_report_to_dicts
+
+    report = analyze_closures(scenario)
+
+    if args.json:
+        print(json.dumps(closure_report_to_dicts(report), indent=2))
+        return
+
+    print("ResQ - BRIDGE CLOSURE IMPACT ANALYSIS")
+    print(
+        f"Scenario: {len(scenario.ambulances)} ambulances, "
+        f"{len(scenario.incidents)} incidents"
+    )
+    print(f"Baseline (all roads open): {report.baseline_minutes:.0f} weighted minutes")
+    print()
+
+    headers = (
+        "Bridge Name",
+        "Road Edge",
+        "Cost (min)",
+        "Increase",
+        "Impact %",
+        "Assignment",
+    )
+    rows: list[tuple[str, ...]] = []
+    for imp in report.impacts:
+        chosen = ", ".join(f"{a}->{i}" for a, i in imp.assignment)
+        rows.append(
+            (
+                imp.bridge_name,
+                f"{imp.edge[0]} - {imp.edge[1]}",
+                f"{imp.objective_minutes:.0f}",
+                f"+{imp.cost_increase_minutes:.0f} min" if imp.cost_increase_minutes > 0 else "0 min",
+                f"+{imp.cost_increase_percent:.1f}%",
+                chosen,
+            )
+        )
+
+    widths = tuple(
+        max(len(header), *(len(row[index]) for row in rows))
+        for index, header in enumerate(headers)
+    )
+    print("  " + " | ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
+    print("  " + "-+-".join("-" * width for width in widths))
+    for row in rows:
+        print("  " + " | ".join(value.ljust(widths[i]) for i, value in enumerate(row)))
+
+    print()
+    most_critical = report.impacts[0]
+    if most_critical.cost_increase_minutes > 0:
+        print(
+            f"Most critical bottleneck: {most_critical.bridge_name} "
+            f"(+{most_critical.cost_increase_minutes:.0f} min / +{most_critical.cost_increase_percent:.1f}% cost increase)"
+        )
+    else:
+        print("No tested bridge closure increased total response cost.")
 
 
 def _run_sweep(scenario, args) -> None:
