@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
+import sys
+
 import pytest
 
+from resq import cli
 from resq.classical import brute_force
 from resq.qubo import DispatchProblem
 from resq.scenario import DEMO_CLOSURE, demo_scenario
+from resq import sweep as sweep_module
 from resq.sweep import SweepResult, SweepRow, run_sweep, sweep_to_dicts
 
 
@@ -59,6 +64,35 @@ def test_sweep_to_dicts_round_trips_fields():
     assert d["exact_optimum_minutes"] == sweep.exact_optimum_minutes
     assert "valid_fraction" in d
     assert "runtime_seconds" in d
+
+
+def test_sweep_json_output_is_machine_readable(monkeypatch, capsys):
+    expected = SweepResult(
+        rows=(
+            SweepRow(
+                reps=1,
+                status="ok",
+                valid_fraction=1.0,
+                prob_of_exact_optimum=0.5,
+                best_valid_minutes=34.0,
+                exact_optimum_minutes=34.0,
+                matches_exact=True,
+                circuit_depth=12,
+                two_qubit_gates=8,
+                runtime_seconds=0.1,
+            ),
+        ),
+        exact_optimum_minutes=34.0,
+        total_runtime_seconds=0.1,
+        shots=4096,
+        seed=7,
+    )
+    monkeypatch.setattr(sweep_module, "run_sweep", lambda *args, **kwargs: expected)
+    monkeypatch.setattr(sys, "argv", ["resq.cli", "--sweep", "--json"])
+
+    cli.main()
+
+    assert json.loads(capsys.readouterr().out) == sweep_to_dicts(expected)
 
 
 @pytest.mark.quantum

@@ -119,18 +119,19 @@ def _run_sweep(scenario, args) -> None:
     closure_edges = DEMO_CLOSURE if args.closure else None
     prepared = prepare(scenario, closure_edges)
 
-    print("ResQ — QAOA DEPTH SWEEP")
-    print(
-        f"Scenario: {len(scenario.ambulances)} ambulances, "
-        f"{len(scenario.incidents)} incidents"
-    )
-    print(f"QUBO variables/qubits: {prepared.problem.n_qubits}")
-    if closure_edges:
-        print(f"Road closure: {closure_edges}")
-    else:
-        print("Road closure: none")
-    print(f"Shots: {args.shots}, Seed: {args.seed}")
-    print()
+    if not args.json:
+        print("ResQ — QAOA DEPTH SWEEP")
+        print(
+            f"Scenario: {len(scenario.ambulances)} ambulances, "
+            f"{len(scenario.incidents)} incidents"
+        )
+        print(f"QUBO variables/qubits: {prepared.problem.n_qubits}")
+        if closure_edges:
+            print(f"Road closure: {closure_edges}")
+        else:
+            print("Road closure: none")
+        print(f"Shots: {args.shots}, Seed: {args.seed}")
+        print()
 
     sweep = run_sweep(
         prepared.problem,
