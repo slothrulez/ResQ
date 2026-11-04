@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import os
+import ctypes
+import resource
 
 from resq.qaoa import QAOAResult
 from resq.qubo import DispatchProblem
 
 
 def crash_worker(problem: DispatchProblem, **kwargs) -> QAOAResult:
-    """Terminate the disposable worker to exercise crash recovery."""
-    os._exit(1)
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    ctypes.string_at(0)
+    raise AssertionError("unreachable")
